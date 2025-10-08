@@ -18,14 +18,15 @@ services:
       retries: 3
     restart: unless-stopped
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile    # ✅ consistent name
-    container_name: frontend_service
-    ports:
-      - "3000:80"
-    depends_on:
-      backend:
-        condition: service_healthy  # ✅ wait until backend is healthy
-    restart: unless-stopped
+    frontend:
+  build:
+    context: ./frontend
+    dockerfile: Dockerfile
+  container_name: frontend
+  ports:
+    - "3000:80"   # map host 3000 to container port 80
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost/"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
