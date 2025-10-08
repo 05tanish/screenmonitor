@@ -2,52 +2,76 @@ pipeline {
     agent any
 
     environment {
-        COMPOSE_PROJECT_DIR = 'app'
+        PROJECT_DIR = 'app'
+        BACKEND_PORT = '8002'
+        FRONTEND_PORT = '3000'
     }
 
     stages {
-        stage('Check SCM') {
+        stage('Prepare Workspace') {
             steps {
                 script {
-                    echo "Checking out the SCM..."
-                    checkout scm
-                    echo "SCM checked out successfully"
+                    echo "🧼 Cleaning old workspace..."
+                    cleanWs()
                 }
             }
         }
 
-        stage('Build Container Images') {
+        stage('Checkout Repository') {
             steps {
                 script {
-                    echo "Building backend and frontend images using docker-compose..."
-                    dir("${COMPOSE_PROJECT_DIR}") {
+                    echo "📦 Checking out Git repository..."
+                    checkout scm
+                    echo "✅ Checkout complete."
+                }
+            }
+        }
+
+        stage('Verify Docker Setup') {
+            steps {
+                script {
+                    echo "🔍 Verifying Docker environment..."
+                    sh 'docker --version'
+                    sh 'docker-compose --version'
+                }
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                dir("${PROJECT_DIR}") {
+                    script {
+                        echo "⚙️ Building frontend and backend images using docker-compose..."
                         sh 'docker-compose build'
+                        echo "✅ Build successful!"
                     }
-                    echo "Images built successfully"
                 }
             }
         }
 
         stage('Deploy Containers') {
             steps {
-                script {
-                    echo "Starting containers..."
-                    dir("${COMPOSE_PROJECT_DIR}") {
-                        sh 'docker-compose down || true'
+                dir("${PROJECT_DIR}") {
+                    script {
+                        echo "🚀 Deploying containers..."
+                        sh 'docker-compose down --remove-orphans || true'
                         sh 'docker-compose up -d'
+                        echo "✅ Containers are up!"
                     }
-                    echo "Containers started successfully"
                 }
             }
         }
 
-        stage('Test Application') {
+        stage('Test Services') {
             steps {
                 script {
-                    echo "Testing the application..."
-                    sh 'curl -f http://localhost:3000 || exit 1'
-                    sh 'curl -f http://localhost:8002 || exit 1'
-                    echo "Application is working fine"
+                    echo "🧪 Running health checks..."
+                    retry(3) {
+                        sleep(5)
+                        sh "curl -f http://localhost:${FRONTEND_PORT} || exit 1"
+                        sh "curl -f http://localhost:${BACKEND_PORT} || exit 1"
+                    }
+                    echo "✅ Both services are healthy!"
                 }
             }
         }
@@ -55,9 +79,10 @@ pipeline {
         stage('Cleanup') {
             steps {
                 script {
-                    echo "Cleaning up dangling images..."
-                    sh 'docker image prune -f'
-                    echo "Cleanup done successfully"
+                    echo "🧹 Cleaning up unused Docker resources..."
+                    sh 'docker container prune -f || true'
+                    sh 'docker image prune -f || true'
+                    echo "✅ Cleanup complete!"
                 }
             }
         }
@@ -65,10 +90,14 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Pipeline executed successfully!"
+            echo "🎉 Pipeline finished successfully! Both frontend and backend are running."
         }
         failure {
-            echo "❌ Pipeline failed!"
+            echo "❌ Pipeline failed. Please check the Jenkins logs."
+        }
+        always {
+            echo "🏁 Final workspace cleanup..."
+            cleanWs()
         }
     }
 }
