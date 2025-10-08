@@ -18,7 +18,7 @@ services:
       retries: 3
     restart: unless-stopped
 
- frontend:
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile    # ✅ consistent name
@@ -29,4 +29,3 @@ services:
       backend:
         condition: service_healthy  # ✅ wait until backend is healthy
     restart: unless-stopped
-
