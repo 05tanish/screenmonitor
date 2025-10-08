@@ -1,0 +1,74 @@
+pipeline {
+    agent any
+
+    environment {
+        COMPOSE_PROJECT_DIR = 'app'
+    }
+
+    stages {
+        stage('Check SCM') {
+            steps {
+                script {
+                    echo "Checking out the SCM..."
+                    checkout scm
+                    echo "SCM checked out successfully"
+                }
+            }
+        }
+
+        stage('Build Container Images') {
+            steps {
+                script {
+                    echo "Building backend and frontend images using docker-compose..."
+                    dir("${COMPOSE_PROJECT_DIR}") {
+                        sh 'docker-compose build'
+                    }
+                    echo "Images built successfully"
+                }
+            }
+        }
+
+        stage('Deploy Containers') {
+            steps {
+                script {
+                    echo "Starting containers..."
+                    dir("${COMPOSE_PROJECT_DIR}") {
+                        sh 'docker-compose down || true'
+                        sh 'docker-compose up -d'
+                    }
+                    echo "Containers started successfully"
+                }
+            }
+        }
+
+        stage('Test Application') {
+            steps {
+                script {
+                    echo "Testing the application..."
+                    sh 'curl -f http://localhost:3000 || exit 1'
+                    sh 'curl -f http://localhost:8002 || exit 1'
+                    echo "Application is working fine"
+                }
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                script {
+                    echo "Cleaning up dangling images..."
+                    sh 'docker image prune -f'
+                    echo "Cleanup done successfully"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🎉 Pipeline executed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+        }
+    }
+}

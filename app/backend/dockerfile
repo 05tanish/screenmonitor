@@ -1,0 +1,25 @@
+# Use official Node.js image
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first (for caching)
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy the rest of the source code
+COPY . .
+
+# Create a non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+# Set environment and expose port
+ENV PORT=8002
+EXPOSE 8002
+
+# Start the server
+CMD ["node", "server.js"]

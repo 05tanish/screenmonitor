@@ -1,0 +1,31 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile   # ✅ use "Dockerfile" (not ".dockerfile")
+    container_name: backend_service
+    ports:
+      - "8002:8002"
+    environment:
+      - NODE_ENV=production
+      - PORT=8002
+    healthcheck:                # ✅ added backend healthcheck
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile    # ✅ consistent name
+    container_name: frontend_service
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy  # ✅ wait until backend is healthy
+    restart: unless-stopped
