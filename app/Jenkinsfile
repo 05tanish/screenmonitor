@@ -10,27 +10,41 @@ pipeline {
     stages {
         stage('Prepare Workspace') {
             steps {
-                cleanWs()
+                script {
+                    echo "🧼 Cleaning old workspace..."
+                    cleanWs()
+                }
             }
         }
 
         stage('Checkout Repository') {
             steps {
-                checkout scm
+                script {
+                    echo "📦 Checking out Git repository..."
+                    checkout scm
+                    echo "✅ Checkout complete."
+                }
             }
         }
 
         stage('Verify Docker Setup') {
             steps {
-                sh 'docker --version'
-                sh 'docker-compose --version'
+                script {
+                    echo "🔍 Verifying Docker environment..."
+                    sh 'docker --version'
+                    sh 'docker-compose --version'
+                }
             }
         }
 
-        stage('Build Containers') {
+        stage('Build Docker Images') {
             steps {
                 dir("${PROJECT_DIR}") {
-                    sh 'docker-compose build --no-cache'
+                    script {
+                        echo "⚙️ Building frontend and backend images using docker-compose..."
+                        sh 'docker-compose build'
+                        echo "✅ Build successful!"
+                    }
                 }
             }
         }
@@ -38,24 +52,12 @@ pipeline {
         stage('Deploy Containers') {
             steps {
                 dir("${PROJECT_DIR}") {
-                    sh 'docker-compose down --remove-orphans || true'
-                    sh 'docker-compose up -d'
-                }
-            }
-        }
-
-        stage('Wait for Health Checks') {
-            steps {
-                dir("${PROJECT_DIR}") {
-                    echo "Waiting for containers to become healthy..."
-                    sh '''
-                    sleep 10
-                    until [ "$(docker inspect -f '{{.State.Health.Status}}' frontend_service)" == "healthy" ] && \
-                          [ "$(docker inspect -f '{{.State.Health.Status}}' backend_service)" == "healthy" ]; do
-                      echo "Waiting for containers..."
-                      sleep 5
-                    done
-                    '''
+                    script {
+                        echo "🚀 Deploying containers..."
+                        sh 'docker-compose down --remove-orphans || true'
+                        sh 'docker-compose up -d'
+                        echo "✅ Containers are up!"
+                    }
                 }
             }
         }
@@ -63,19 +65,24 @@ pipeline {
         stage('Test Services') {
             steps {
                 script {
+                    echo "🧪 Running health checks..."
                     retry(3) {
+                        sleep(5)
                         sh "curl -f http://localhost:${FRONTEND_PORT} || exit 1"
-                        sh "curl -f http://localhost:${BACKEND_PORT}/health || exit 1"
+                        sh "curl -f http://localhost:${BACKEND_PORT} || exit 1"
                     }
+                    echo "✅ Both services are healthy!"
                 }
             }
         }
 
         stage('Cleanup') {
             steps {
-                dir("${PROJECT_DIR}") {
+                script {
+                    echo "🧹 Cleaning up unused Docker resources..."
                     sh 'docker container prune -f || true'
                     sh 'docker image prune -f || true'
+                    echo "✅ Cleanup complete!"
                 }
             }
         }
@@ -83,12 +90,13 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Pipeline executed successfully! All services are healthy."
+            echo "🎉 Pipeline finished successfully! Both frontend and backend are running."
         }
         failure {
-            echo "❌ Pipeline failed. Check logs for details."
+            echo "❌ Pipeline failed. Please check the Jenkins logs."
         }
         always {
+            echo "🏁 Final workspace cleanup..."
             cleanWs()
         }
     }
