@@ -151,14 +151,6 @@ Displays live charts, tables, and system info
     ```
 4. Restart backend; frontend will now show live, real system stats.
 
----
-
-## Screenshots (Optional)
-
-- CPU & Memory Charts
-- Disk Usage & Network Info
-- Active Window History
-- Top Processes Table
 
 ---
 
@@ -175,4 +167,4 @@ For major changes, please open an issue first to discuss what you would like to 
 
 Please make sure to update tests as appropriate.
 
-[def]: #notes# screenmonitor
+ #notes#screenmonitor
